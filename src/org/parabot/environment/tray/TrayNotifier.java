@@ -1,7 +1,5 @@
 package org.parabot.environment.tray;
 
-import java.awt.TrayIcon.MessageType;
-
 /**
  * The tray notification interface
  *
@@ -10,6 +8,8 @@ import java.awt.TrayIcon.MessageType;
 
 public interface TrayNotifier {
 
-	public void notifyUser(String title, String message, MessageType messageType);
+	public void notifyUser(String message);
+
+	public void warnUser(String message);
 
 }

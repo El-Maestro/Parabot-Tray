@@ -10,6 +10,8 @@ import java.awt.TrayIcon.MessageType;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
+import java.util.HashMap;
+
 import javax.swing.ImageIcon;
 
 /**
@@ -23,7 +25,7 @@ public class TrayUI implements ActionListener {
 	private static TrayUI instance;
 	private PopupMenu menu;
 	private MenuItem run, stop, pause, exit, none;
-	private ArrayList<MenuItem> customMenuItems;
+	private HashMap<MenuItem, Integer> customMenuItems;
 
 	public TrayUI() {
 		if (!SystemTray.isSupported()) {
@@ -31,7 +33,7 @@ public class TrayUI implements ActionListener {
 			return;
 		}
 		instance = this;
-		customMenuItems = new ArrayList<MenuItem>();
+		customMenuItems = new HashMap<MenuItem, Integer>();
 		menu = new PopupMenu();
 		icon = new TrayIcon(getImage(), "Parabot - username", menu);
 		icon.setImageAutoSize(true);
@@ -64,7 +66,7 @@ public class TrayUI implements ActionListener {
 
 	public void addCustomMenuItems(MenuItem... items) {
 		for (int index = 0; index < items.length; index++) {
-			customMenuItems.add(items[index]);
+			customMenuItems.put(items[index], index);
 			menu.insert(items[index], index);
 		}
 		menu.insertSeparator(items.length);
@@ -72,7 +74,7 @@ public class TrayUI implements ActionListener {
 
 	public void removeAllCustomMenusItems() {
 		if (customMenuItems != null) {
-			for (MenuItem item : customMenuItems) {
+			for (MenuItem item : customMenuItems.keySet()) {
 				menu.remove(item);
 			}
 			menu.remove(0);
@@ -84,13 +86,13 @@ public class TrayUI implements ActionListener {
 		if (customMenuItems != null) {
 			menu.remove(item);
 			customMenuItems.remove(item);
-			if (customMenuItems.size() == 0) {
+			if (customMenuItems.isEmpty()) {
 				menu.remove(0);
 			}
 		}
 	}
 
-	public ArrayList<MenuItem> getCustomMenuItems() {
+	public HashMap<MenuItem, Integer> getCustomMenuItems() {
 		return customMenuItems;
 	}
 

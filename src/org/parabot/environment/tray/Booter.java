@@ -1,6 +1,5 @@
 package org.parabot.environment.tray;
 
-
 import java.awt.AWTException;
 import java.awt.MenuItem;
 
@@ -13,6 +12,9 @@ public class Booter {
 		item2 = new MenuItem("new item2");
 		item3 = new MenuItem("new item3");
 		TrayUI.getInstance().addCustomMenuItems(item, item2, item3);
-		TrayUI.getInstance().removeAllCustomMenusItems();
+		TrayUI.getInstance().removeCustomMenuItem(item);
+		TrayController i = new TrayController();
+		i.notifyUser("yes");
 	}
+
 }

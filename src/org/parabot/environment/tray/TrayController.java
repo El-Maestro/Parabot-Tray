@@ -3,7 +3,7 @@ package org.parabot.environment.tray;
 import java.awt.SystemTray;
 import java.awt.TrayIcon.MessageType;
 
-public class TrayController {
+public class TrayController implements TrayNotifier {
 	private boolean supported;
 
 	public TrayController() throws UnsupportedOperationException {
@@ -15,9 +15,22 @@ public class TrayController {
 		supported = true;
 	}
 
-	public void sendTrayNotification(String title, String message, MessageType messageType) {
+	public TrayNotifier getController() {
+		return new TrayController();
+	}
+
+	@Override
+	public void notifyUser(String message) {
 		if (supported) {
-			TrayUI.sendMessage(title, message, messageType);
+			TrayUI.sendMessage("Script", message, MessageType.INFO);
+		}
+
+	}
+
+	@Override
+	public void warnUser(String message) {
+		if (supported) {
+			TrayUI.sendMessage("Script", message, MessageType.WARNING);
 		}
 	}
 
