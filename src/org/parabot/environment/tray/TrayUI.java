@@ -9,6 +9,7 @@ import java.awt.TrayIcon;
 import java.awt.TrayIcon.MessageType;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -21,23 +22,28 @@ import javax.swing.ImageIcon;
  */
 
 public class TrayUI implements ActionListener {
-	private TrayIcon icon;
 	private static TrayUI instance;
+
+	private TrayIcon icon;
 	private PopupMenu menu;
-	private MenuItem run, stop, pause, exit, none;
+	private MenuItem run, stop, pause, exit;
+
 	private HashMap<MenuItem, Integer> customMenuItems;
 
+	private final HashMap<String, TrayController> trayControllers;
+
 	public TrayUI() {
-		if (!SystemTray.isSupported()) {
-			System.out.println("System tray not supported.");
-			return;
-		}
-		instance = this;
-		customMenuItems = new HashMap<MenuItem, Integer>();
+		customMenuItems = new HashMap<>();
 		menu = new PopupMenu();
+
 		icon = new TrayIcon(getImage(), "Parabot - username", menu);
 		icon.setImageAutoSize(true);
+
 		fillMenu();
+
+		this.initialize();
+
+		trayControllers = new HashMap<>();
 	}
 
 	private void fillMenu() {
@@ -45,25 +51,24 @@ public class TrayUI implements ActionListener {
 		stop = new MenuItem("Stop");
 		pause = new MenuItem("Pause");
 		exit = new MenuItem("Exit Client");
-		none = new MenuItem("None");
 
 		run.addActionListener(this);
 		stop.addActionListener(this);
 		pause.addActionListener(this);
 		exit.addActionListener(this);
 
-		menu.add(run);
-		menu.add(pause);
-		menu.add(stop);
-		menu.addSeparator();
-		menu.add(exit);
-		menu.addSeparator();
-		menu.add(none);
+		// Re-use your own code, cuz why not
+		addCustomMenuItems(run, pause, stop);
+		menu.addSeparator(); // TODO: See #addCustomMenuItems - As we shouldn't be calling this ourselves
+		addCustomMenuItems(exit);
 
 		pause.setEnabled(false);
 		stop.setEnabled(false);
 	}
 
+	// TODO: What if a script adds items (or doesn't), should there be a separator? Yes, how are we gonna manage that
+	// TODO: Seems like the order of the menu items is incorrect, exit is above run etc
+	// TODO: Give the option to set the order (between our own limits, could not be below exit for example)
 	public void addCustomMenuItems(MenuItem... items) {
 		for (int index = 0; index < items.length; index++) {
 			customMenuItems.put(items[index], index);
@@ -72,6 +77,7 @@ public class TrayUI implements ActionListener {
 		menu.insertSeparator(items.length);
 	}
 
+	// TODO: See #addCustomMenuItems
 	public void removeAllCustomMenusItems() {
 		if (customMenuItems != null) {
 			for (MenuItem item : customMenuItems.keySet()) {
@@ -82,6 +88,7 @@ public class TrayUI implements ActionListener {
 		}
 	}
 
+	// TODO: See #addCustomMenuItems
 	public void removeCustomMenuItem(MenuItem item) {
 		if (customMenuItems != null) {
 			menu.remove(item);
@@ -92,30 +99,17 @@ public class TrayUI implements ActionListener {
 		}
 	}
 
-	public HashMap<MenuItem, Integer> getCustomMenuItems() {
-		return customMenuItems;
+	private void initialize() {
+		try {
+			SystemTray.getSystemTray().add(icon);
+			sendMessage("Parabot", "Welcome " + "username.", MessageType.INFO);
+		} catch (AWTException e) {
+			e.printStackTrace();
+		}
 	}
 
-	protected void initialize() throws AWTException {
-		SystemTray.getSystemTray().add(icon);
-		System.out.println("Tray icon initialized.");
-		sendMessage("Parabot", "Welcome " + "username.", MessageType.INFO);
-	}
-
-	protected static void sendMessage(String title, String message, MessageType messageType) {
-		getInstance().icon.displayMessage(title, message, messageType);
-	}
-
-	protected MenuItem getRunMenu() {
-		return run;
-	}
-
-	protected MenuItem getStopMenu() {
-		return stop;
-	}
-
-	protected MenuItem getPauseMenu() {
-		return pause;
+	protected void sendMessage(String title, String message, MessageType messageType) {
+		this.icon.displayMessage(title, message, messageType);
 	}
 
 	public static TrayUI getInstance() {
@@ -123,40 +117,31 @@ public class TrayUI implements ActionListener {
 	}
 
 	private Image getImage() {
-		// return new ImageIcon(Images.getResource("/storage/images/icon.png")).getImage();
-		return new ImageIcon(
-				getClass().getClassLoader().getResource("org/parabot/environment/tray/icon.png"))
-						.getImage();
+		URL resource = getClass().getClassLoader().getResource("org/parabot/environment/tray/icon.png");
+		if (resource != null) {
+			return new ImageIcon(resource).getImage();
+		}
+		return null;
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		String command = e.getActionCommand();
-		switch (command) {
-			case "Run":
-				/*
-				 * if (BotUI.getInstance().pauseScript) { BotUI.getInstance().pauseScript = false;
-				 * BotUI.getInstance().pause.setEnabled(true);
-				 * BotUI.getInstance().run.setEnabled(false); pause.setEnabled(true);
-				 * run.setEnabled(false); BotUI.getInstance().setScriptState(Script.STATE_RUNNING);
-				 * break; } new ScriptSelector().setVisible(true);
-				 */
-				break;
-			case "Stop":
-				// BotUI.getInstance().setScriptState(Script.STATE_STOPPED);
-				break;
-			case "Pause":
-				/*
-				 * BotUI.getInstance().setScriptState(Script.STATE_PAUSE);
-				 * BotUI.getInstance().pause.setEnabled(false);
-				 * BotUI.getInstance().run.setEnabled(true); pause.setEnabled(false);
-				 * run.setEnabled(true); BotUI.getInstance().pauseScript = true;
-				 */
-				break;
-			case "Exit Client":
-				System.out.println("Exit Client");
-				System.exit(0);
-				break;
+		TBotUI.getInstance().actionPerformed(e);
+	}
+
+	public TrayController getTrayController(String type) {
+		TrayController current;
+		if ((current = trayControllers.get(type.toLowerCase())) == null){
+			switch (type.toLowerCase()){
+				case "script":
+					current = new ScriptTrayController();
+					break;
+				case "random":
+					current = new RandomTrayController();
+					break;
+			}
 		}
+		trayControllers.put(type.toLowerCase(), current);
+		return current;
 	}
 }

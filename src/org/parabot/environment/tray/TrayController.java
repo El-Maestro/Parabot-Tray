@@ -4,33 +4,38 @@ import java.awt.SystemTray;
 import java.awt.TrayIcon.MessageType;
 
 public class TrayController implements TrayNotifier {
-	private boolean supported;
+	// This could be final, using an if/else statement instead of just if
+	private static final boolean supported = SystemTray.isSupported();
 
-	public TrayController() throws UnsupportedOperationException {
-		if (!SystemTray.isSupported()) {
-			System.out.println("System tray not supported.");
-			supported = false;
+	// We could define the type here, so it has the ability to act as any controller - script, random, etc
+	protected final String type;
+
+	// We should not be capable of creating a new TrayController, only this class package
+	protected TrayController(String type) {
+		this.type = type;
+
+		if (!supported){
+			throw new UnsupportedOperationException();
 		}
-		System.out.println("System tray supported.");
-		supported = true;
-	}
-
-	public TrayNotifier getController() {
-		return new TrayController();
 	}
 
 	@Override
 	public void notifyUser(String message) {
-		if (supported) {
-			TrayUI.sendMessage("Script", message, MessageType.INFO);
-		}
-
+		messageUser(message, MessageType.INFO);
 	}
 
 	@Override
 	public void warnUser(String message) {
+		messageUser(message, MessageType.WARNING);
+	}
+
+	public void messageUser(String message, MessageType messageType){
 		if (supported) {
-			TrayUI.sendMessage("Script", message, MessageType.WARNING);
+			TrayUI.getInstance().sendMessage(
+					type,
+					message,
+					messageType
+			);
 		}
 	}
 
