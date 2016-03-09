@@ -9,8 +9,11 @@ import java.awt.TrayIcon;
 import java.awt.TrayIcon.MessageType;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 import javax.swing.ImageIcon;
 
@@ -25,19 +28,22 @@ public class TrayUI implements ActionListener {
 	private static TrayUI instance;
 	private PopupMenu menu;
 	private MenuItem run, stop, pause, exit, none;
-	private HashMap<MenuItem, Integer> customMenuItems;
+	private HashMap<MenuType, ArrayList<MenuItem>> customMenuItems;
+	private final HashMap<String, TrayController> trayControllers;
 
 	public TrayUI() {
-		if (!SystemTray.isSupported()) {
-			System.out.println("System tray not supported.");
-			return;
-		}
 		instance = this;
-		customMenuItems = new HashMap<MenuItem, Integer>();
+		customMenuItems = new HashMap<MenuType, ArrayList<MenuItem>>();
 		menu = new PopupMenu();
 		icon = new TrayIcon(getImage(), "Parabot - username", menu);
 		icon.setImageAutoSize(true);
 		fillMenu();
+		try {
+			getInstance().initialize();
+		} catch (AWTException e) {
+			e.printStackTrace();
+		}
+		trayControllers = new HashMap<String, TrayController>();
 	}
 
 	private void fillMenu() {
@@ -64,21 +70,25 @@ public class TrayUI implements ActionListener {
 		stop.setEnabled(false);
 	}
 
-	public void addCustomMenuItems(MenuItem... items) {
+	public void addCustomMenuItems(MenuType type, MenuItem... items) {
+		ArrayList<MenuItem> list = new ArrayList<MenuItem>(Arrays.asList(items));
 		for (int index = 0; index < items.length; index++) {
-			customMenuItems.put(items[index], index);
 			menu.insert(items[index], index);
+			list.add(items[index]);
 		}
+		customMenuItems.put(type, list);
 		menu.insertSeparator(items.length);
 	}
 
-	public void removeAllCustomMenusItems() {
+	public void removeAllCustomMenusItems(MenuType type) {
 		if (customMenuItems != null) {
-			for (MenuItem item : customMenuItems.keySet()) {
-				menu.remove(item);
+			for (Entry<MenuType, ArrayList<MenuItem>> item : customMenuItems.entrySet()) {
+				for (int index = 0; index < item.getValue().size(); index++) {
+					menu.remove(item.getValue().get(index));
+				}
 			}
 			menu.remove(0);
-			customMenuItems.clear();
+			customMenuItems.remove(type);
 		}
 	}
 
@@ -92,18 +102,26 @@ public class TrayUI implements ActionListener {
 		}
 	}
 
-	public HashMap<MenuItem, Integer> getCustomMenuItems() {
+	public HashMap<MenuType, ArrayList<MenuItem>> getCustomMenuItems() {
 		return customMenuItems;
 	}
 
 	protected void initialize() throws AWTException {
-		SystemTray.getSystemTray().add(icon);
-		System.out.println("Tray icon initialized.");
-		sendMessage("Parabot", "Welcome " + "username.", MessageType.INFO);
+		try {
+			SystemTray.getSystemTray().add(icon);
+			sendMessage("Parabot", "Welcome " + "username.", MessageType.INFO);
+		} catch (AWTException e) {
+			e.printStackTrace();
+		}
 	}
 
 	protected static void sendMessage(String title, String message, MessageType messageType) {
 		getInstance().icon.displayMessage(title, message, messageType);
+	}
+
+	protected static void sendMessage(TrayControllerType type, String message,
+			MessageType messageType) {
+		getInstance().icon.displayMessage(type.getType(), message, messageType);
 	}
 
 	protected MenuItem getRunMenu() {
@@ -123,40 +141,33 @@ public class TrayUI implements ActionListener {
 	}
 
 	private Image getImage() {
-		// return new ImageIcon(Images.getResource("/storage/images/icon.png")).getImage();
-		return new ImageIcon(
-				getClass().getClassLoader().getResource("org/parabot/environment/tray/icon.png"))
-						.getImage();
+		URL resource = getClass().getClassLoader()
+				.getResource("org/parabot/environment/tray/icon.png");
+		if (resource != null) {
+			return new ImageIcon(resource).getImage();
+		}
+		return null;
 	}
 
 	@Override
 	public void actionPerformed(ActionEvent e) {
-		String command = e.getActionCommand();
-		switch (command) {
-			case "Run":
-				/*
-				 * if (BotUI.getInstance().pauseScript) { BotUI.getInstance().pauseScript = false;
-				 * BotUI.getInstance().pause.setEnabled(true);
-				 * BotUI.getInstance().run.setEnabled(false); pause.setEnabled(true);
-				 * run.setEnabled(false); BotUI.getInstance().setScriptState(Script.STATE_RUNNING);
-				 * break; } new ScriptSelector().setVisible(true);
-				 */
-				break;
-			case "Stop":
-				// BotUI.getInstance().setScriptState(Script.STATE_STOPPED);
-				break;
-			case "Pause":
-				/*
-				 * BotUI.getInstance().setScriptState(Script.STATE_PAUSE);
-				 * BotUI.getInstance().pause.setEnabled(false);
-				 * BotUI.getInstance().run.setEnabled(true); pause.setEnabled(false);
-				 * run.setEnabled(true); BotUI.getInstance().pauseScript = true;
-				 */
-				break;
-			case "Exit Client":
-				System.out.println("Exit Client");
-				System.exit(0);
-				break;
+		// TBotUI.getInstance().actionPerformed(e);
+		System.exit(0);
+	}
+
+	public TrayController getTrayController(TrayControllerType type) {
+		TrayController current;
+		if ((current = trayControllers.get(type.getType().toLowerCase())) == null) {
+			switch (type.getType().toLowerCase()) {
+				case "script":
+					current = new ScriptTrayController();
+					break;
+				case "random":
+					current = new RandomTrayController();
+					break;
+			}
 		}
+		trayControllers.put(type.getType().toLowerCase(), current);
+		return current;
 	}
 }

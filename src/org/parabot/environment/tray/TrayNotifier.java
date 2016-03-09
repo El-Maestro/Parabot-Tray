@@ -8,8 +8,8 @@ package org.parabot.environment.tray;
 
 public interface TrayNotifier {
 
-	public void notifyUser(String message);
+	void notifyUser(String message);
 
-	public void warnUser(String message);
+	void warnUser(String message);
 
 }
